@@ -1,0 +1,61 @@
+#!/bin/csh
+
+set folder=/project/iapetus/coupled_core_cooling/DATA/2D
+#set case1=CASE13
+#set folder1=$folder/$case1/post
+set folder1=post
+set nx=193
+set nz=49
+
+set dx=0.9375 
+set dz=1.286458
+#set dx=0.1875
+#set dz=1
+
+set z0=0
+set z1=5
+set z2=252
+set x1=-90	
+set x2=90
+
+set xs=3
+set zs=8
+
+set zinc=8.5
+set xinc=5
+
+set frame1=$1
+
+set inputa=$folder1/tempdim.$frame1
+set inputb=$folder1/Tr.$frame1
+set inputc=$folder1/Trdim.$frame1
+set inputd=$folder1/Trdim$nx.$frame1
+set inpute=$folder1/tempTr.$frame1
+set inputf=$folder1/resid.$frame1
+
+set output=$folder1/resid$frame1.ps
+set colort=t.cpt
+set colortm=tm.cpt
+
+/bin/rm $output $colort $colortm $inputc $inputd $inpute $inputf
+ 
+#makecpt -Cwysiwyg -T220/2620/300 -Z > $colort
+makecpt -Cwysiwyg -T-4/8/2 -Z > $colort
+#makecpt -Cwysiwyg -T2000/2800/100 -Z > $colortm
+
+awk '{print $1*198+75, $2*'$z2'}' $inputb > $inputc
+touch $inputd
+repeat $nx cat $inputc >> $inputd
+paste $inputa $inputd > $inpute
+awk '{print $1, $2, $3-$4}' $inpute > $inputf
+
+surface $inputf -Gmap.grd -R$x1/$x2/$z1/$z2 -I$dx/$dz -V -T0.25 
+grdimage map.grd -R$x1/$x2/$z1/$z2 -JP$zs -C$colort -B30/50WEsN -P -K -X3 -Y$zinc >! $output
+
+#psscale -C$colort -L -D2.5/-2/5.0/0.4h -B30g15:"": -O -P >> $output
+psscale -C$colort -L -D5/-2/10.0/0.4h -O -P -K >> $output
+
+pstext -R0/20/0/28 -Jx1. -X-7 -Y-18.5 -O -P <<END >> $output
+ 12 17 16 0.0 1 2 Residual Temperature (K)
+END
+

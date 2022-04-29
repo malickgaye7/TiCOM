@@ -1,0 +1,30 @@
+#!/bin/csh
+
+set first=$1
+set last=$2
+set inc=$3
+
+#set rcmb=0.0198
+set rcmb=0.8413
+set postdir=post
+
+set inputa=timeseries
+set output=$postdir/hf
+set outputs=$postdir/hfs
+set outputb=$postdir/hfb
+#set outputc=$postdir/bulkc
+
+set step=$first
+
+set input=ave.$step
+sed q $input >! $inputa
+
+while ($step<$last)
+  @ step = $step + $inc
+  set input=ave.$step
+  sed q $input >> $inputa
+end
+
+awk '{print $3, $4}' $inputa >! $outputs
+awk '{print $3, ($5*'$rcmb'*'$rcmb')}' $inputa >! $outputb
+#awk '{print $3, $10}' $inputa >! $outputc

@@ -1,0 +1,117 @@
+#!/bin/csh
+
+set step=$1
+
+set R0=252000
+set rcmb=0.0198
+set postdir=post
+
+set inputa=$postdir/viscr.$step
+set inputb=$postdir/viscrdim.$step
+set output=$postdir/TiRADE_input.$step
+
+# Header information
+
+#gridpoints
+set ntheta=91      
+set nphi=181        
+set nr=66           
+
+# global material properties
+set refvisc=1.0e14
+set Ea=6.0e4
+set kcond=4.0
+
+# orbital 
+set freq=5.31e-5
+set ecc=0.0047
+set obl=0.043
+
+# thermal bcs
+set Tbot=273.0
+set Tsurf=75.0
+set Fbot=0.0
+
+# output directory
+set TiRADE_dir=./tidal$step
+
+# output flags
+set h3Dflag=0
+set surfaceflag=1
+set axiflag=1
+set h1Dflag=1
+set potflag=0
+set radfuncflag=0
+set stressflag=0
+set condflag=0
+
+# print header info
+echo $ntheta '\t' $nphi '\t' $nr '\t # Number of points in theta phi r' >! $output
+echo $refvisc '\t' $Ea '\t' $kcond '\t # ref_visc (Pa s)  Ea (kj/mol)  k (W m-1 K-1)' >> $output
+echo $freq '\t' $ecc '\t' $obl '\t # freq (s-1)  ecc  ob' >> $output
+echo $Tbot '\t' $Tsurf '\t' $Fbot '\t # Tbot (K)  Tsurf (K)  Fbot (W m-2)' >> $output
+
+# print output info
+echo $TiRADE_dir  '\t # output_directory' >> $output
+echo $h3Dflag '\t # Output flag for 3D heating, set to 1 to output, 0 otherwise' >> $output
+echo $surfaceflag '\t # Surface heating'  >> $output
+echo $axiflag '\t # 2D axisymmetric heating'  >> $output
+echo $h1Dflag '\t # 1D radial heating' >> $output
+echo $potflag '\t # Potential' >> $output
+echo $radfuncflag '\t # Radial Functions' >> $output
+echo $stressflag '\t # Stress and Strain' >> $output
+echo $condflag '\t # Flag for whether or not to run conductive iteration' >> $output
+
+
+# layers
+set numlayers=$nr
+set corelayers=53
+set dens_core=2170
+set dens_ice=925
+#set rig_core=7.0e10
+set rig_core=4.0e9
+set rig_ice=4.0e9
+set bulk_mod=1.0e19
+
+echo $numlayers '\t # Number of layers must match num_r for now' >> $output
+awk '{printf "%g %g\n", $1*'$refvisc', $2*'$R0'}' $inputa >! $inputb
+
+# Fluid inner core
+set k=1
+echo $k
+set density=$dens_core
+set rigidity=0
+
+set inputc=$postdir/viscline
+
+sed -n $k'p' $inputb >! $inputc
+awk '{printf "%4.3e \t %d \t %2.1e \t %4.3e \t %2.1e\n", $2, '$density', '$rigidity', '$bulk_mod', 0.0}' $inputc >> $output
+@ k = $k + 1
+
+# Solid core
+echo core
+set density=$dens_core
+set rigidity=$rig_core
+while ($k <= $corelayers)
+ echo $k
+ sed -n $k'p' $inputb >! $inputc
+ awk '{printf "%4.3e \t %d \t %2.1e \t %4.3e \t %2.1e\n", $2, '$density', '$rigidity', '$bulk_mod', $1}' $inputc >> $output
+ @ k = $k + 1
+end
+
+# Back up k so we get interface layer at same depth with ice properties
+@ k = $k - 1
+
+# Ice shell
+echo ice
+set density=$dens_ice
+set rigidity=$rig_ice
+while ($k < $numlayers)  
+ echo $k
+ sed -n $k'p' $inputb >! $inputc
+ awk '{printf "%4.3e \t %d \t %2.1e \t %4.3e \t %2.1e\n", $2, '$density', '$rigidity', '$bulk_mod', $1}' $inputc >> $output
+ @ k = $k + 1
+end
+
+
+

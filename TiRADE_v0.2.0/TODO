@@ -1,0 +1,29 @@
+TODO
+ 
+Tidal Response And Dissipation of Energy (TiRADE)
+
+This is a list of planned modifications and upgrades to TiRADE. They are listed 
+roughly in order of priority, but no timetable is attached to them. Feel free
+to make suggestions, but I make no promises about implementing them. To quote 
+my son's preschool teacher, "You get what you get, and you don't get upset!"
+
+	- Rewrite Legendre Polynomial and Gauss Jordan functions
+	
+	- Handle fluid layers properly. This will require a modification to the 
+		propagator matrices at the fluid-solid interface. Fluids do not 
+		support shear stresses, and so the y4 radial function is identically
+		zero in these layers.
+		
+	- Relax the assumption of a fluid innermost core. Need to figure out how to
+		fix the inner boundary conditions for that one.
+		
+	- Include rheologies beyond Maxwell (e.g., Andrade)
+	
+	- Include obliquity tides (important for Triton)
+	
+	- Include dissipation in fluid layers (you don't get this in a viscoelastic
+		formulation)
+	
+	- Decouple grid spacing from the number of layers.
+	
+	- Implement freeze-thaw in thermodynamically consistent way.

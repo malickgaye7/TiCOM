@@ -1,0 +1,83 @@
+#!/bin/bash
+
+# Ensures a well-formed settings and functions file exist. Exits if not.
+if [[ -f settings && -f functions ]];
+then
+    source functions # load the necessary functions
+    check_functions functions # ensure the functions are defined
+    settings_file=settings
+    check_settings # ensure settings are well-formed; exits if not
+    source settings # sources if so
+else
+    # If 'settings' does not exist or *TiCOM scripts directory*/functions does not exist then we will give the following error and exit.
+    echo "[ERROR] A well-formed 'settings' file and a well-formed 'functions' file must exist in the working directory ($PWD); exiting"
+    exit
+fi
+
+# Read arguments (options & flags) from the command-line, allow user to interface w/ TiCOM before running
+redirect="> /dev/null" # Redirects output to appropriate destination (stdout or /dev/null if silenced); usage: eval (command) $redirect
+read_arguments $@
+
+# Create data subdirectories, assign to variables
+mkdir -p "$disk"/TiRADE_data/input_files
+mkdir -p "$disk"/Citcom_data/"$case_dir"/post
+mkdir -p "$disk"/Citcom_data/"$case_dir"/input_files
+tirade_dir="$disk"/TiRADE_data
+citcom_dir="$disk"/Citcom_data
+
+# Copy the Citcom input to an 'input files' directory so those can be referenced later
+# ... copy to *data output directory*/Citcom_data/*case name*/input_files/
+eval copy_citcom_in $redirect
+citcom_template="$citcom_input"
+
+# Set outer radius (from Citcom input file)
+R0=$(get_R0_from_citcom_input "$citcom_input")
+
+# Make Citcom & TiRADE if their executables don't already exist
+remake_tirade "$tirade_exec_dir"
+remake_citcom "$citcom_exec_dir"
+
+# If starting step at 0, run Citcom first so we have some starting data
+if [[ $first -eq 0 ]]; then
+    echo "-------------------------------------------------------------------------"
+    echo "INITIALIZE"
+    echo "-------------------------------------------------------------------------"
+    echo -e "Starting Citcom w/ input: '$citcom_input'\n"
+    #echo -e "INITIALIZE\n$citcom_exec_dir/citcom.x $citcom_input"
+    eval "$citcom_exec_dir"/citcom.x "$citcom_input" $redirect
+fi
+
+# Begin iterating between TiRADE & Citcom...
+step=$first
+while [[ $(($step <= $last)) -eq 1 ]]; do
+
+    # Set the TiRADE output directory for this CASE name & current step
+    tirade_step_dir="$tirade_dir"/"$case_dir"\_step$step
+
+    # Create a TiRADE input file
+    tirade_input="$tirade_dir"/input_files/TiRADE_input_"$case_dir".$step
+    eval make_tirade_input "$tirade_dir" "$citcom_dir" "$case_dir" $step "$tirade_input" "$tirade_step_dir" $R0 $redirect # TODO prints a lot of stuff... too verbose
+
+    # Run TiRADE using the TiRADE input file
+    echo -e "-------------------------------------------------------------------------\nStarting TiRADE w/ input: '$tirade_input'\n"
+    eval "$tirade_exec_dir"/bin/tirade.x "$tirade_input" $redirect
+
+    # Convert heating from TiRADE to Citcom format
+    tirade_heating="$tirade_step_dir"/heating_axi_ice.0.dat # source file
+    citcom_heating="$citcom_dir"/"$case_dir"/h2D.dat # destination file (to be created or overwritten)
+    eval echo -e "\n*******" "$tirade_heating" "$citcom_heating" "*******\n" $redirect
+    awk '{print $1, ($2/'$R0'), ($3)}' "${tirade_heating}" > "${citcom_heating}"
+    cp "$citcom_heating" "$citcom_heating".$step
+    
+    # Create a Citcom input file
+    citcom_input="$citcom_dir"/"$case_dir"/input_files/Citcom_input_"$case_dir"\_step$step
+    eval make_citcom_input "$citcom_dir" "$case_dir" "$citcom_template" "$citcom_input" $step $inc $R0 $redirect
+
+    # Run Citcom using the Citcom input file
+    echo -e "-------------------------------------------------------------------------\nStarting Citcom w/ input: '$citcom_input'\n"
+    eval "$citcom_exec_dir"/citcom.x "$citcom_input" $redirect
+
+    # Increment 'step' by 'inc'
+    step=$(($step + $inc))
+
+done

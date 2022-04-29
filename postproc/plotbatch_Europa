@@ -1,0 +1,16 @@
+#!/bin/csh
+
+#foreach step ( 0 ) 
+foreach step (0 100 200 500 1000 2000 3000 4000 5000 10000 15000 20000 25000 30000 38000) 
+  #set step=$1
+  echo $step
+  set Trfile=post/Trdim$step
+  set tempfile=post/temp$step
+  source ../../../../../postproc/post_Europa $step
+  source ../../../../../postproc/dimT $step
+  #xmgrace post/Trdim.$step -batch ../../../../../postproc/bfile -nosafe -hardcopy -printfile $Trfile.png
+  #source ../../../../../postproc/plot_temp $step
+  #convert $tempfile.pdf $tempfile.png
+  #mogrify -trim +repage $Trfile.png $tempfile.png
+  #montage $Trfile.png $tempfile.png -tile x1 -geometry +1+0 -background none post/Tmont$step.png
+end

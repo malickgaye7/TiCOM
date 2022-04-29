@@ -1,0 +1,65 @@
+#!/bin/csh
+
+set folder=/project/iapetus/Enceladus/DATA/
+set folder1=post
+set nx=193
+set nz=49
+
+set dx=0.9375 
+#set dz=1.286458
+set dz=1.182292
+
+#set z1=5
+set z1=25
+set z2=252
+set x1=-90	
+set x2=90
+
+set xs=3
+set zs=6
+
+set zinc=5
+set xinc=10
+
+set frame1=$1
+
+set output=$folder1/tcdim$frame1.ps
+set colort=t.cpt
+set colorc=c.cpt
+set colorc2=c2.cpt
+
+/bin/rm $output $colort $colorc $colorc2
+
+makecpt -Cwysiwyg -T75/275/50 -Z > $colort
+
+set inputa=$folder1/temp.$frame1
+set inputb=$folder1/tempdim.$frame1
+awk '{print 90-$1, $2*'$z2', ($3*198+75)}' $inputa >! $inputb
+
+surface $inputb -Gmap.grd -R$x1/$x2/$z1/$z2 -I$dx/$dz -V -T0.25 
+grdimage map.grd -R$x1/$x2/$z1/$z2 -JP$zs -C$colort  -B30/50WEsN -X3 -Y$zinc -K >! $output
+
+makecpt -Cwysiwyg -T-0.01/1.01/.01 -Z > $colorc
+makecpt -Cwysiwyg -T0/1/1 -Z > $colorc2
+#makecpt -Cgray -T-10/10/2 -Z > $colorc
+
+set inputa=$folder1/comp.$frame1
+set inputb=$folder1/compdim.$frame1
+awk '{print 90-$1, $2*'$z2', (($3 >=0) ? $3 : 0)}' $inputa >! $inputb
+#set inputa=$folder1/dcomp.$frame1
+#set inputb=$folder1/dcompdim.$frame1
+#awk '{print 90-$1, $2*'$z2', $3*1e6 }' $inputa >! $inputb
+
+surface $inputb -Gmap.grd -R$x1/$x2/$z1/$z2 -I$dx/$dz -V -T0.25 
+#xyz2grd $inputb -Gmap.grd -R$x1/$x2/$z1/$z2 -I$dx/$dz -V 
+grdimage map.grd -R$x1/$x2/$z1/$z2 -JP$zs -C$colorc  -B30/50WEsN -O -X$xinc  -K >> $output
+
+#pstext -R0/20/0/28 -Jx1. -X-4 -O -P -K <<END >> $output
+# 12 20 16 0.0 1 2 Mantle Temperature ($case1)
+#END
+
+#psscale -C$colort -L -D2.5/-2/5.0/0.4h -B30g15:"": -O -P >> $output
+#makecpt -Cwysiwyg -T0/0.5/0.1 -Z > $colorc
+psscale -C$colort -L -D-7/-2/6.0/0.4h -O  -K >> $output
+#psscale -C$colort -L -D-7/-2/6.0/0.4h -O  >> $output
+psscale -C$colorc2 -L -D3/-2/6.0/0.4h -O  >> $output

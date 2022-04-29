@@ -1,0 +1,13 @@
+#!/bin/csh
+
+set step=$1
+set postdir=post
+set R0=252000
+set T0=75
+set T1=273
+
+set input=$postdir/Tr.$step
+set output=$postdir/Trdim.$step
+
+awk '{print ($1*('$T1'-'$T0')+'$T0'), ($2*'$R0'/1000)}' $input >! $output
+

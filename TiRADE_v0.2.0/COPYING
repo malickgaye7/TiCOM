@@ -1,0 +1,51 @@
+COPYING
+
+Tidal Response And Dissipation of Energy (TiRADE)
+
+Copyright (c) 2007, 2008, 2013, 2014 University of California and James H. Roberts
+
+This source code was is made available in order to enhance research into 
+planetary geophysics. The C code and accompanying documentation were originally 
+developed at the University of California, Santa Cruz by James Roberts during 
+the fall of 2006 and 2007 under grant NNX07AL30G from NASA's Outer Planets 
+Research program. 
+
+0. NO WARRANTY
+
+Although the software has undergone benchmark testing, TiRADE comes with 
+absolutely no warranty; use at your own risk! In no event shall the 
+author or copyright holders be held liable for any claim or damages arising
+from or related to the use of this software. 
+
+1. PERMISSIONS
+
+The use is hereby granted a free, non-transferable, non-exclusive license to 
+use the TiRADE software, its components and documentation, to modify the source
+as desired for the user's personal use in non-profit research, and to publish 
+based on the results obtained through use of the software. 
+
+This software may not not be incorporated into commercial packages. 
+
+2. ATTRIBUTION
+
+In order to recognize the effort that went into development of the software, 
+the user must cite the following paper:
+
+	Roberts, J. H., Nimmo, F. (2008). Tidal heating and the long-term stability 
+	of a subsurface ocean on Enceladus, Icarus, 194, 175-189.
+
+in any publication arising from the use of this code. Use of this code must also
+be indicated in the acknowledgments section of said publications, and in any 
+related oral or poster presentations. 
+
+3. DISTRIBUTION
+
+The user may not further distribute the code to other potential users without 
+explicit written permission of the author. Instead, please refer interested 
+parties to the primary author of the code at James.Roberts@jhuapl.edu, who will 
+provide the current stable version of the code and accompanying documentation. 
+This will prevent "forking" of the code, and make it easier for the author to 
+maintain a clean source code, to track down any bugs, to know who is using the 
+code and how to contact them with updates, and to get a sense of what sorts of 
+problems the code is being used for. 
+

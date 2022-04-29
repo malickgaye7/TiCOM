@@ -1,0 +1,69 @@
+#!/bin/csh
+
+set folder=/project/iapetus/Enceladus/DATA/freezemelt
+set case1=Europa1
+set folder1=$folder/$case1/Citcom_data/$case1/post
+#set folder1=post
+set nx=1025
+set nz=33
+
+#set dx=0.9375 
+#set dz=1.286458
+#set dz=1.135
+#set dx=0.1875
+set dz=0.2
+set dx=0.05
+
+set z0=0
+#set z1=206
+#set z2=252
+set z1=1530
+set z2=1560
+#set x1=-90	
+set x1=60
+set x2=90
+
+
+set xs=3
+set zs=8
+
+set zinc=8.5
+set xinc=5
+
+set frame1=$1
+
+set output=$folder1/temp$frame1.ps
+set output2=$folder1/temp$frame1.pdf
+set colort=t.cpt
+
+/bin/rm $output $colort 
+
+#makecpt -Cwysiwyg -T75/110/5 -Z > $colort
+#makecpt -Cwysiwyg -T75/275/40 -Z > $colort
+makecpt -Cwysiwyg -T110/275/15 -Z > $colort
+
+
+set inputa=$folder1/temp.$frame1
+set inputb=$folder1/tempdim.$frame1
+set inputc=$folder1/cmb.dat
+set inputd=$folder1/base.dat
+awk '{print 90-$1, $2*'$z2', ($3*198+75)}' $inputa >! $inputb
+sed 1q $inputb | awk '{print $2}' >! $inputd
+set z1=`sed 1q $inputb | awk '{print $2}'`
+set dz=`awk '{print ('$z2'-'$z1')/200}' $inputd `
+
+surface $inputb -Gmap.grd -R$x1/$x2/$z1/$z2 -I$dx/$dz -V -T0.25 
+grdimage map.grd -R$x1/$x2/$z1/$z2 -JP$zs -C$colort  -B30/10WEsN -P -K -X3 -Y$zinc >! $output
+
+# Draw core
+#psxy $inputc -JP$zs -R$x1/$x2/$z1/$z2 -W5/255/255/255  -P -K -O >> $output
+
+#psscale -C$colort -L -D2.5/-2/5.0/0.4h -B30g15:"": -O -P >> $output
+psscale -C$colort -L -D4/-2/9.0/0.4h -O -P -K >> $output
+
+pstext -R0/20/0/28 -Jx1. -X-8 -Y-21.5 -O -P <<END >> $output
+ 12 20 16 0.0 1 2 Temperature (K)
+END
+
+#ps2pdf $output $output2
+

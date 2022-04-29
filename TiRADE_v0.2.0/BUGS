@@ -1,0 +1,27 @@
+BUGS
+
+Tidal Response And Dissipation of Energy (TiRADE)
+
+List of Known Bugs
+===============================================================================
+	- If fluid layer (e.g., ocean) is very close to the surface, accuracy of
+		calculation in outer shell is degraded. 
+	
+	- Accuracy may be degraded in the Maxwell time of the "fluid" layer is 
+		similar to the forcing period.  
+		
+	- The "bottom" heating (e.g. at the CMB or base of the ice shell) is 
+		really the heating at the 11th layer. If there are not exactly 10
+		layers below the CMB, this will not really be the heating at the
+		basal layer. 
+		
+To report a bug
+===============================================================================
+	Send an email to James.Roberts@jhuapl.edu with a description of the
+	unexpected behavior. It will be helpful if you attach your input file so I
+	can attempt to reproduce the error. 
+	
+	Not all reported bugs may actually turn out to be bugs. Often it turns out
+	to be perfectly reasonable but non-intuitive behavior. It never hurts to 
+	report a bug, but first it's worth just checking that the behavior you 
+	observe really doesn't make sense. 

@@ -1,0 +1,93 @@
+#!/bin/csh
+
+set step=$1
+set postdir=post
+
+sed 1d coord.0 >! $postdir/coord1
+awk '{print $2*57.29578, $3}' $postdir/coord1 >! $postdir/coords
+sed 'n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;d;' $postdir/coords >! $postdir/coordselem
+sed 9216q $postdir/coordselem >! $postdir/coordselem1
+
+set input=ave.$step
+set inputa=$postdir/ave1.$step
+set output=$postdir/Tr.$step
+set output2=$postdir/viscr.$step
+
+sed 1d $input >! $inputa
+awk '{print $2, $1}' $inputa >! $output
+awk '{print $7, $1}' $inputa >! $output2
+
+set input=temp_comp.$step
+set inputa=$postdir/tc1.$step
+set inputb=$postdir/t.$step
+set inputc=$postdir/t1.$step
+set output=$postdir/temp.$step 
+
+sed 1d $input >! $inputa
+awk '{print $1}' $inputa >! $inputb
+paste $postdir/coords $inputb >! $inputc
+sed 9457q $inputc >! $output
+
+set inputb=$postdir/c.$step
+set inputc=$postdir/c1.$step
+set output=$postdir/comp.$step 
+
+awk '{print $2}' $inputa >! $inputb
+paste $postdir/coords $inputb >! $inputc
+sed 9457q $inputc >! $output
+
+#set inputb=$postdir/m.$step
+#set inputc=$postdir/m1.$step
+#set output=$postdir/melt.$step
+
+#awk '{print $4*1e6}' $inputa >! $inputb
+#paste coords $inputb >! $inputc
+#sed 12545q $inputc >! $output
+
+set inputb=$postdir/v.$step
+set inputc=$postdir/v1.$step
+set output=$postdir/velo.$step
+ 
+awk '{print $5, $6}' $inputa >! $inputb
+paste $postdir/coords $inputb >! $inputc
+sed 9457q $inputc >! $output
+
+set output2=$postdir/vr.$step
+awk '{print $1, $2, $4}' $output >! $output2
+
+#sed -n '3,${p;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;}' velo.$step > ! velobot.$step
+#sed -n '60,${p;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;}' velo.$step > ! v5km.$step
+#sed -n '59,${p;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;}' velo.$step > ! v7p5km.$step
+
+
+sed -n '49,${p;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;n;}' $postdir/temp.$step > ! $postdir/Ts.$step
+
+set input=heating.$step
+set inputa=$postdir/h1.$step
+set inputb=$postdir/henhance.$step
+set inputc=$postdir/henhance1.$step
+set output=$postdir/tidalenhance.$step 
+
+sed 1d $input >! $inputa
+awk '{print ($6)}' $inputa >! $inputb
+paste $postdir/coordselem1 $inputb >! $inputc
+sed 9216q $inputc >! $output
+
+set inputb=$postdir/htidal.$step
+set inputc=$postdir/htidal1.$step
+set inputd=$postdir/hshear
+set inpute=$postdir/htidalshear.$step
+set inputf=$postdir/htotal.$step
+set output=$postdir/tidalheating.$step 
+set output2=$postdir/tidalheating1.$step 
+
+#awk '{print ($5)}' $inputa >! $inputb
+#awk '{print ($4)}' heating_t.0 >! $inputd
+#paste coordselem1 $inputb >! $inputc
+#paste $inputc $inputd >! $inpute
+#awk '{print ($1, $2, ($3+$4))}' $inpute >! $inputf
+#sed 12545q $inputc >! $output
+#awk '{print $1,$2,($2*$2*sin($1/57.29578)),($2*$2*sin($1/57.29578)*$3)}' $output >! $output2
+#awk '{ totalvol += $3} END {print totalvol }' $output2
+#awk '{ total += $4} END {print total } ' $output2
+

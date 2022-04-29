@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# INPUT --------------------------------------------------------------------------
+
+  # Citcom input file (filepath)
+    citcom_input_d=Citcom_axi_for_TiCOM/input-example-Citcom-JKedit2
+
+# OUTPUT -------------------------------------------------------------------------
+
+  # TiCOM output location (directory path)
+    disk_d=data
+
+  # Citcom output name (directory path); in TiCOM output directory subfolder
+    case_dir_d=output
+
+# STEPS / INCREMENT --------------------------------------------------------------
+
+  # Step at which Citcom begins (integer >= 0)
+    first_d=0
+
+  # Step at which Citcom stops (integer > 0)
+    last_d=100
+
+  # The amount by which the step number increases between runs (integer > 0)
+    inc_d=10
+
+# SOURCE CODE / SCRIPTS ----------------------------------------------------------
+
+  # TiRADE source code location (directory path)
+    tirade_exec_dir_d=TiRADE_v0.2.0
+
+  # Citcom source code location (directory path)
+    citcom_exec_dir_d=Citcom_axi_for_TiCOM
+
+  # Postprocessing scripts location (directory path or "false" if disabled)
+    postproc_dir_d="false"
+
+################################# End user input #################################
+# Copy assignments; allows "resetting"; this should not be edited.
+citcom_input="$citcom_input_d"
+disk="$disk_d"
+case_dir="$case_dir_d"
+first=$first_d
+last=$last_d
+inc=$inc_d
+tirade_exec_dir="$tirade_exec_dir_d"
+citcom_exec_dir="$citcom_exec_dir_d"
+postproc_dir="$postproc_dir_d"

@@ -1,0 +1,48 @@
+ChangeLog
+ 
+Tidal Response And Dissipation of Energy (TiRADE)
+
+TiRADE_v0.2.0 (2014-01-31)
+===============================================================================
+	- Re-organized the package to use the standard C Application folder 
+		structure
+		- bin
+		- doc
+		- obj
+		- src
+	- Added the standard human readable files:
+		- BUGS
+		- Changelog
+		- COPYING	
+		- INSTALL
+		- README
+		- TODO
+		
+TiRADE_v0.1.5 (2014-01-21)
+===============================================================================
+	- Removed disused files nrutils.c and nrutils.h not intended for
+		distribution.
+	- Added "clean" target to Makefile
+	- Corrected copyright information
+
+TiRADE_v0.1.4 (2013-02-06)
+===============================================================================
+	- Write complex Love numbers to text file 
+
+TiRADE_v0.1.3 (2013-01-03)
+===============================================================================
+	- Improved computation of shell volume
+	- First use of models with multilayer silicate core, and computation of 
+		dissipation in core layer (no changes to code needed to enable this)
+
+TiRADE_v0.1.2 (2012-11-07)
+===============================================================================
+	- Changed name of software to TiRADE
+
+tidal_cond_v0.1.1 (2009-07-10)
+===============================================================================
+	- Enabled 1D radial heating output
+
+tidal_cond_v0.1.0 (2009-06-19)
+===============================================================================
+	- Initial public release

@@ -1,0 +1,56 @@
+Installation Instructions
+*************************
+
+Installation of TiRADE requires the following:
+
+	1. A C compiler. Development has been done on Linux and MacOS using the GNU 
+		compiler gcc. 
+		
+	2. The make utility.  
+
+Once you have obtained and installed the required software, uncompress and 
+unarchive the TiRADE distribution you obtained:
+
+	tar -xvzf TiRADE_vX.Y.Z.tar.gz
+	
+Enter the root directory for the package:
+
+	cd TiRADE_vX.Y.Z
+	
+To build the package run:
+
+	make tirade.x
+
+If you modify the source code, you will need to run make again to rebuild the
+application. It may be helpful to first run:
+
+	make clean
+	
+to remove the old object files before rebuilding.
+
+Running the software
+********************
+
+TiRADE requires an input file containing values of orbital and physical 
+properties relevant to your particular problem, flags indicating which output
+files you want to produce, the path to a directory into which the output should 
+be written, and the following rheological parameters for each 
+layer.  
+
+Outer radius (m)	Density (kg/m^3)	shear mod (Pa)	bulk mod (Pa)	Viscosity (Pa s)
+
+starting with the innermost layer, and progressing outward to the surface. 
+The first layer MUST be inviscid and strengthless (columns 3 and 5 must be 0). 
+
+Additional information regarding setup of the input file can be found in the
+documentation.
+
+Ensure the output directory specified in the input file exists. Run the 
+program: 
+
+	tirade.x <input_file>
+
+replacing input_file with the path and name of your actual input file. 
+Additionally, if you issue the command outside of the directory containing the 
+executable: TiRADE_vX.Y.Z/bin/ you will need to either give the full path to 
+the executable, add TiRADE_vX.Y.Z/bin/ to your path, or define an alias.

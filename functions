@@ -1,0 +1,1082 @@
+#!/bin/bash
+
+# RE-MAKE -----------------------------------------------------------------------------------
+
+remake_tirade () {
+    # Cleans & Makes TiRADE if tirade.x does not exist.
+    # Usage: remake_tirade tirade_exec_dir X
+    #   tirade_exec_dir - TiRADE package directory
+    #   X - 1 if force remake
+    # Return: None
+
+    # If user wants silence then create make flag
+    if [[ "$redirect" == "> /dev/null" ]]; then
+        make_silence_flag="SILENCE_FLAG=-w"
+    else
+        make_silence_flag=""
+    fi
+
+    if [[ $2 -eq 1 || ! -f "$1"/bin/tirade.x && ! -f "$1"/tirade.x ]]; then
+        echo -n "Re-making tirade.x... "
+        eval make clean -C "$1" $redirect
+        eval make tirade.x "$make_silence_flag" -C "$1" $redirect
+
+        if [[ ! -f "$1"/bin/tirade.x && ! -f "$1"/tirade.x ]]; then
+            echo -e "\n[ERROR] Could not build tirade.x; exiting"
+            exit
+        else
+            echo "finished"
+        fi
+    fi
+}
+
+remake_citcom () {
+    # Cleans & Makes Citcom if citcom.x does not exist.
+    # Usage: remake_citcom citcom_exec_dir X
+    #   citcom_exec_dir - Citcom package directory
+    #   X - 1 if force remake
+    # Return: None
+
+    # If user wants silence then create make flag
+    if [[ "$redirect" == "> /dev/null" ]]; then
+        make_silence_flag="SILENCE_FLAG=-w"
+    else
+        make_silence_flag=""
+    fi
+
+    if [[ $2 -eq 1 || ! -f "$1"/citcom.x && ! -f "$1"/bin/citcom.x ]];
+    then
+        echo -n "Re-making citcom.x... "
+        eval make clean -C "$1" $redirect
+        eval make citcom.x "$make_silence_flag" -C "$1" $redirect
+        
+        if [[ ! -f "$1"/citcom.x && ! -f "$1"/bin/citcom.x ]]; then
+            echo -e "\n[ERROR] Could not build citcom.x; exiting"
+            exit
+        else
+            echo "finished"
+        fi
+    fi
+}
+
+# VALIDATION / INPUT HANDLING ---------------------------------------------------------------
+
+compare_integer_0 () {
+    # Checks if an integer is >= or > 0.
+    # Usage: compare_integer_0 x y
+    #   x -> Integer that will be compared to 0
+    #   y -> 0 or 1 indicating > 0 or >= 0, respectively
+    # Return: 1 if passes inequality test (true), 0 if failure (false)
+
+    if [[ $2 -eq 1 && $(($1 >= 0)) -eq 1 ]]; # Inclusive and geq 0
+    then
+        echo 1 # return true
+    elif [[ $2 -eq 1 ]]; # Inclusive but not geq 0
+    then
+        echo 0 # return false
+    elif [[ (($1 > 0)) ]]; # Exclusive
+    then
+        echo 1 # return true
+    else
+        echo 0 # return false
+    fi
+}
+
+check_first_last_inc () {
+    # Makes sure that...
+    #   a) first >= 0
+    #   b) last > 0
+    #   c) inc > 0
+    # Usage: check_first_last_inc
+    # Return: None
+    # Exits if first < 0, last <= 0, or inc <= 0 (bad values).
+
+    if [[ ! $(($(compare_integer_0 $first 1) + $(compare_integer_0 $last 0) + $(compare_integer_0 $inc 0))) -eq 3 ]]; then
+        echo "[ERROR] Invalid value(s) for first step, last step, or step increment; exiting"
+        exit # ... because these are bad values, we need to stop everything
+    fi
+}
+
+check_tirade_src_code () {
+    # Makes sure that TiRADE source code location is valid. More specifically, checks to
+    # see if tirade.c exists there somewhere.
+    # Usage: check_tirade_src_code
+    # Return: None
+    # Exits if tirade.c (source file) can't be found.
+
+    if [[ ! -f "$tirade_exec_dir"/src/tirade.c && ! -f "$tirade_exec_dir"/tirade.c ]];
+    then
+        echo "[ERROR] Invalid TiRADE source code directory (tirade_exec_dir); exiting"
+        exit
+    fi
+}
+
+check_citcom_src_code () {
+    # Makes sure that Citcom source code location is valid. More specifically, checks to
+    # see if citcom.c exists there somewhere.
+    # Usage: check_citcom_src_code
+    # Return: None
+    # Exits if citcom.c (source file) can't be found.
+    if [[ ! -f "$citcom_exec_dir"/Citcom.c && ! -f "$citcom_exec_dir"/src/Citcom.c ]];
+    then
+        echo "[ERROR] Invalid Citcom source code directory (citcom_exec_dir); exiting"
+        exit
+    fi
+}
+
+check_postproc () {
+    # Makes sure that the postprocessing scripts directory exists if its use is desired.
+    # If either of the main postprocessing files (post or plot_temp) is missing from the supplied
+    # directory, and if its use is desired, then we will give an error and exit.
+    # Usage: check_postproc
+    # Return: None
+    # Exits if post or plot_temp cannot be found at the indicated directory.
+
+    if [[ ( ! -f "$postproc_dir"/post || ! -f "$postproc_dir"/plot_temp ) && "$postproc_dir" != "false" ]];
+    then
+        echo "[ERROR] Postprocessing scripts cannot be found (postproc_dir); exiting"
+        exit
+    fi
+}
+
+check_file_for_text () {
+    # "Validates" a file by making sure that specific text exists in that file. Utility function.
+    # Usage: check_file_for_text file arr
+    #    file -> file to check
+    #    arr -> an array of strings that has been expanded (so they take pos. params. $2-...)
+    # Return: 1 if valid file (all text can be found inside of it), 0 if invalid (at least one failure to find text)
+
+    file_to_check="$1"
+    shift
+    while [[ ! -z "$1" ]]; do
+        # If searched text is empty & does not contain "function_names_to_check" (so we can validate this file as well)
+        # then return 0 (false)
+        if [[ -z "$(grep "$1" "$file_to_check" | grep -v "function_names_to_check")" ]]; then
+            echo 0
+            return
+        fi 
+        shift
+    done
+    echo 1 # If we did not have to return false at any point earlier, return 0 (true)
+}
+
+check_functions () {
+    # Checks to make sure that the 'functions' file (this one or versions of it) are well-formed by checking
+    # to see if each of TiCOM's *necessary* functions are defined.
+    # Usage: check_functions functions_file
+    # Exits if functions file cannot be validated.
+
+    # NOTE: To add functions to be checked to this list, make sure that *they all remain on the same line*!
+    function_names_to_check=( "remake_tirade ()" "remake_citcom ()" "compare_integer_0 ()" "check_first_last_inc ()" "check_citcom_src_code ()" "check_tirade_src_code ()" "check_postproc ()" "check_file_for_text ()" "check_settings ()" "get_R0_from_citcom_input ()" "print_variables ()" "copy_citcom_in ()" "reset ()" "read_arguments ()" "make_tirade_input ()" "make_citcom_input ()" )
+
+    # If we cannot find each symbol in the functions file (filtering out function_names_to_check, of course) then exit.
+    if [[ $(check_file_for_text "$1" "${function_names_to_check[@]}") -eq 0 ]]; then
+        echo "[ERROR] Could not validate functions file; exiting"
+        exit
+    fi
+}
+
+check_settings () {
+    # Checks if the settings file is well-formed and gives non-empty assignments.
+    # Usage: check_settings
+    # Return: None
+    # Exit if failure.
+
+    # Assignments by users
+    arr1=("citcom_input_d=" "disk_d=" "case_dir_d=" "first_d=" "last_d=" "inc_d=" "tirade_exec_dir_d=" "citcom_exec_dir_d=" "postproc_dir_d=" )
+
+    # Assignments of temporary variables to permanent variables (users wouldn't have to edit this text)
+    arr2=( "citcom_input=\"\$citcom_input_d\"" "disk=\"\$disk_d\"" "case_dir=\"\$case_dir_d\"" "first=\$first_d" "last=\$last_d" "inc=\$inc_d" "tirade_exec_dir=\"\$tirade_exec_dir_d\"" "citcom_exec_dir=\"\$citcom_exec_dir_d\"" "postproc_dir=\"\$postproc_dir_d\"" )
+    
+    # First, check to see if all of the *required* param. assignments exist in the settings file
+    if [[ $(check_file_for_text "$settings_file" "${arr1[@]}") -eq 0 || $(check_file_for_text "$settings_file" "${arr2[@]}") -eq 0 ]]; then
+        echo "[ERROR] Could not validate settings file; exiting"
+        exit
+    fi
+
+    # Now check to make sure that assignments aren't empty...
+    i=0
+    while [[ $(($i < ${#arr1[@]})) -eq 1 ]]; do
+        if [[ -z `grep "${arr1[$i]}" "$settings_file" | awk -F "=" '{print $2}'` ]]; then
+            echo "[ERROR] Empty assignment for '${arr1[$i]}' in $settings_file; exiting"
+            exit
+        fi
+        i=$(($i + 1))
+    done
+    i=0
+    while [[ $(($i < ${#arr2[@]})) -eq 1 ]]; do
+        if [[ -z `grep "${arr2[$i]}" "$settings_file" | awk -F "=" '{print $2}'` ]]; then
+            echo "[ERROR] Bad assignment for '${arr2[$i]}' in $settings_file; exiting"
+            exit
+        fi
+        i=$(($i + 1))
+    done
+}
+
+validate_var_assignment () {
+    # Checks to see if a given variable has an assignment to an appropriate variable in a given file.
+    # Usage: validate_var_assignment file variable mode
+    #   file -> File to be checked for the assignment
+    #   variable -> The variable we should look for in the file (eg. outer_radius in Citcom input file)
+    #   mode -> 0 - string (when the string is only a number, then this is not counted as a valid assignment)
+    #        -> 1 - unbounded float/number in scientific notation/int
+    #        -> 2 - float >= 0
+    #        -> 3 - integer >= 0
+    #        -> 4 - integer > 0
+    # Return: 0 -> Valid assignment does not appear in file
+    #         1 -> Valid assignment appears in file
+
+    if [[ $(($3 > 4)) -eq 1 ]]; then
+        echo "Usage: validate_var_assignment file_to_be_checked assignment_name mode; see 'functions'"
+        return
+    fi
+
+    var_assignment=$(grep "$2=" "$1" | awk -F "$2=" '{printf $2}' | awk -F "," '{printf $1}' | awk -F " " '{printf $1}')
+    if [[ -z "$var_assignment" ]]; then
+        echo 0
+        return
+    fi
+    case $3 in
+        0) # Searching for string matches, excluding "strings" that are exactly numeric
+            if [[ ! -z "$var_assignment" && \
+                  ( -z "$(echo "$var_assignment" | awk '{printf "%f", 1000000000*$1}' | awk -F "." '{printf $1}')" || \
+                  $(($(echo "$var_assignment" | awk '{printf "%f", 1000000000*$1}' | awk -F "." '{printf $1}') == 0)) -eq 1 ) ]]; then
+                echo 1
+                return
+            fi;;
+
+        1) # Searching for unbounded float matches
+            if [[ ! -z "$(echo "$var_assignment" | awk '{printf "%f", 1000000000*$1}' | awk -F "." '{printf $1}')" ]]; then
+                echo 1
+                return
+            fi;;
+
+        2) # Searching for float matches >= 0
+            if [[ ! -z $(echo "$var_assignment" | awk '{printf "%f", 1000000000*$1}' | awk -F "." '{printf $1}') && \
+                  $(($(echo "$var_assignment" | awk '{printf "%f", 1000000000*$1}' | awk -F "." '{printf $1}') >= 0)) -eq 1 ]]; then
+                echo 1
+                return
+            fi;;
+
+        3) # Searching for int matches >= 0
+            if [[ ! -z $(echo "$var_assignment" | awk '{printf "%f", 1000000000*$1}' | awk -F "." '{printf $1}') && ! "$var_assignment" =~ "." && "${var_assignment:0:1}" == "$(echo "$var_assignment" | awk '{printf "%f", $1}' | awk '{print substr($1, 0, 1)}')" && \
+                  $(($(echo "$var_assignment" | awk '{printf "%f", 1000000000*$1}' | awk -F "." '{printf $1}') >= 0)) -eq 1 ]]; then
+                echo 1
+                return
+            fi;;
+
+        4) # Searching for int matches > 0
+            if [[ ! -z $(echo "$var_assignment" | awk '{printf "%f", 1000000000*$1}' | awk -F "." '{printf $1}') && ! "$var_assignment" =~ "." && \
+                  $(($(echo "$var_assignment" | awk '{printf "%f", 1000000000*$1}' | awk -F "." '{printf $1}') > 0)) -eq 1 ]]; then
+                echo 1
+                return
+            fi;;
+
+    esac
+    echo 0
+}
+
+check_input_using_array_mode () {
+    # Takes an array of text associated w/ a given mode for validate_var_assignment,
+    # cycles through them to make sure that everything is there & assigned correctly.
+    # Usage: check_input_using_array_mode citcom_input mode expanded_array
+    # Return: 0 -> At least one assignment that is invalid
+    #         1 -> All assignments valid
+    
+    check_array_input="$1"
+    shift
+    mode=$1
+    shift
+    while [[ ! -z "$1" ]]; do # Cycle through the provided array
+        # If we find a non-match, return the name of the faulty assignment
+        if [[ $(validate_var_assignment "$check_array_input" "$1" "$mode") -eq 0 ]]; then
+            echo "$1"
+            return
+        fi
+        shift
+    done
+    echo 1
+}
+
+check_citcom_input () {
+    # Validates the Citcom input file.
+    # Usage: check_citcom_input citcom_input
+    #   citcom_input -> The Citcom input file to be checked
+    # Return: None
+    # Exits if file cannot be validated.
+    
+    citcom_input_to_check="$1"
+
+    if [[ ! -f "$citcom_input_to_check" ]]; then
+        echo "[ERROR] Cannot locate the Citcom input file $citcom_input_to_check; exiting"
+        exit
+    fi
+
+    # Array of assignments that can be any number
+    float_unbounded_citcom_in=( "theta" "ntheta" "dimenx" "surftemp" "surf_temp_var" "topvbc" "topvbxval" "botvbc" "botvbxval" "botvbyval" "toptbc" "bottbc" "toptbcval" "bottbcval" "topcbc" "botcbc" "topcbcval" "botcbcval" "aug_number" "clapeyron670" "clapeyron410")
+
+    # Array of assignments that should be floats >= 0
+    float_greater_than_eq_to_0=( "rr" "rayleigh_comp" "rayleigh" "Q0" "Q0_enriched" "impact_velocity" "viscE" "viscZ" "viscT" "visc0" "sdepv_misfit" "sdepv_trns" "sdepv_expt" "dispation_number" "inner_radius" "outer_radius" "comp_radius"  "z_lmantle" "z_410" "z_lith" "finetunedt" "tole_compressibility" "accuracy" "layerd" "frequency" "rigidity" "coredensity" "wdensity" "latent" "cp" "thermexp" "gravacc" "thermdiff" "thermdiff_factor" "thermexp_factor" "lmdensity" "density" "refvisc" "ReferenceT" "mm" "ll" "perturbmag" "width670" "width410" "transT410" "transT670" "Ra_410" "Ra_670" "Tsmax")
+
+    # Array of assignments that should be integers > 0
+    int_greater_than_0=( "maxstep" "storage_spacing" "markers_per_ele" "theta_grid_layers" "nodex" "nodey" "nodez" "mgunitx" "mgunitz" "levels" "mg_cycle" "numr" "numtheta")
+
+    # Array of assignments that should be integers >= 0
+    int_greater_than_eq_to_0=( "visc_smooth_cycles" "stokes_flow_only" "restart" "restart_timesteps" "restart_age" "composition" "melting" "comp_diffusivity" "r_grid_layers" "nr" "int_heating_control" "int_heating_control" "impacts" "rheol" "num_mat" "adv_sub_iterations" "piterations" "vhighstep" "up_heavy" "down_heavy" "viterations" "maxsub" "maxsamevisc" "see_convergence" "node_assemble" "num_perturbations" "track_melt" "despin" "shear_heating" "tidal_heating" "latent_heating" "adi_heating" "visc_heating")
+
+    # Array of assignments that should be strings
+    strings_citcom_in=( "datafile" "oldfile" "comp_adv_method" "Viscosity" "TDEPV" "CHEMDEPV" "VMIN" "VMAX" "SDEPV" "aug_lagr" "precond" "Problem" "Geometry" "Solver" "Spacing" "orthogonal" "periodicx" "periodicy" "flowthroughx" "flowthroughy" "DESCRIBE" "BEGINNER" "VERBOSE" "verbose" "COMPRESS" "depthdominated" "eqnzigzag" "eqnviscosity" )
+
+    # Check arrays
+    citcom_check_input_file_results=( $(check_input_using_array_mode "$citcom_input_to_check" 0 "${strings_citcom_in[@]}") $(check_input_using_array_mode "$citcom_input_to_check" 1 "${float_unbounded_citcom_in[@]}") $(check_input_using_array_mode "$citcom_input_to_check" 2 "${float_greater_than_eq_to_0[@]}") $(check_input_using_array_mode "$citcom_input_to_check" 3 "${int_greater_than_eq_to_0[@]}") $(check_input_using_array_mode "$citcom_input_to_check" 4 "${int_greater_than_0[@]}") )
+
+    citcom_type_check_list=( "\"string\"" "float [unbounded; decimal or scientific form]" "float [>= 0]" "integer [>= 0]" "integer [> 0]")
+
+    # Iterate through result array, if any of them are not 1 (meaning it failed) then report which one failed and exit
+    # Also display the format for the assignment
+    citcom_check_i=0
+    for citcom_check_result_elem in "${citcom_check_input_file_results[@]}"; do
+        if [[ "$citcom_check_result_elem" != 1 ]]; then
+            echo "[ERROR] Could not validate $citcom_check_result_elem (format: '$citcom_check_result_elem=${citcom_type_check_list[$citcom_check_i]}') in Citcom input file; exiting"
+            exit
+        fi
+        citcom_check_i=$(($citcom_check_i + 1))
+    done
+}
+
+validate_params () {
+    # Input checking/handling... if any of these are failed, we will exit with an error message.
+    echo -e "-------------------------------------------------------------------------\nValidating parameters\n"
+    echo -n "Validating TiRADE source code... "
+    check_tirade_src_code
+    echo -ne "passed\nValidating Citcom source code... "
+    check_citcom_src_code
+    echo -n -e "passed\nValidating Citcom input file... "
+    check_citcom_input "$citcom_input"
+    echo -ne "passed\nValidating postproc setting... "
+    check_postproc
+    echo -ne "passed\nValidating first step, last step, step increment... "
+    check_first_last_inc
+    echo -n "passed"
+}
+
+# INTERFACING -------------------------------------------------------------------------------
+
+ticom_help () {
+    echo -e "\n-------------------------------------------- TiCOM Help --------------------------------------------\n"
+
+    # Options
+    echo -e "  Options:"
+    echo -e "\n\tFormat*: TiCOM_example option1 option2 ...\n"
+    echo -e "\tOption\t\t              Description of Option"
+    echo -e "\t  --m ......................... Clean & re-make Citcom & TiRADE"
+    echo -e "\t  --c ......................... Clean & re-make Citcom"
+    echo -e "\t  --t ......................... Clean & re-make TiRADE\n"
+    echo -e "\t  --verify, -verify, verify ... Validate settings before running"
+    #echo -e "\t  --o ......................... Organize output data after running TiCOM"
+    echo -e "\t  --dimensionalize ............ Dimensionalize output data"
+    echo -e "\t  --p ......................... Generate temperature plots using default 'postproc' directory"
+    echo -e "\t  --np ........................ Disable generation of temperature plots\n"
+    #echo -e "\t  --b ......................... Break command-line argument parsing loop"
+    echo -e "\t  --h, --help, help ........... Show TiCOM help menu"
+    echo -e "\t  --d ......................... 'Diagnostic'; print the input parameters that TiCOM uses"
+    echo -e "\t  reset ....................... Revert all settings back to default **"
+    echo -e "\t  reset flag(s) ............... Revert specific settings back to default **\n\n"
+
+    # Print overload flags and formats
+    echo -e "  Overloading:"
+    echo -e "\n\tFormat*: TiCOM_example flag1=overloaded_variable1 flag2=overloaded_variable2 ...\n"
+    echo -e "\tFlag\t\t      Description of 'overloaded_variable'\t\tVariable Type"
+
+    # Directories/paths
+    echo -e "\t  settings ............. Default settings file (temporary) ............... String (pathname)"
+    echo -e "\t  data ................. Output data directory ........................... String (pathname)"
+    echo -e "\t  citcom ............... Citcom source code directory .................... String (pathname)"
+    echo -e "\t  citcom_in ............ Citcom initial input file ....................... String (pathname)"
+    echo -e "\t  tirade ............... TiRADE source code directory .................... String (pathname)"
+    echo -e "\t  case ................. Citcom CASE output directory .................... String (pathname)"
+    echo -e "\t  postproc ............. Postprocessing scripts directory ................ String (pathname)\n"
+
+    # Parameters
+    echo -e "\t  first ................ Step at which Citcom begins ..................... Positive Integer"
+    echo -e "\t  last ................. Step at which Citcom ends ....................... Positive Integer"
+    echo -e "\t  inc .................. The amount of steps incremented between runs .... Positive Integer\n"
+
+    echo -e "\n  *  Command-line arguments are generally handled according to the order in which they have been passed."
+    echo -e "  ** Only makes sense in the context of the diagnostic mode."
+    echo -e "     Default settings specified in 'settings' file.\n"
+
+    echo -e "----------------------------------------------------------------------------------------------------\n"
+}
+
+diagnostic () {
+    in_diagnostic_loop=1
+    diagnostic_response=""
+    while [[ $in_diagnostic_loop -eq 1 ]]; do
+        echo -e "\n  DIAGNOSTIC MODE"
+
+        # Print loaded settings to screen
+        print_variables
+
+        echo "  Commands:"
+        echo "     run -----------------------> Begin TiCOM execution"
+        echo "    *option --------------------> Apply option"
+        echo "    *flag=... ------------------> Overload"
+        echo "     reset ---------------------> Reset all settings to default (if 'settings' is set)"
+        echo "     reset flag1 flag2 ... -----> Reset chosen settings to default (if 'settings' is set)"
+        echo -e "     Ctrl + C ------------------> Quit\n"
+        echo -e "  * Please use '--h'/'--help'/'help' to see the available options & flags.\n"
+
+        if [[ -z "$diagnostic_response" ]]; then
+            read -p "  Command: " diagnostic_response
+        else
+            echo "  Command: $diagnostic_response"
+        fi
+        echo -e "\n----------------------------------------------------------------------------------------------------"
+        diagnostic_response_first_word=`echo $diagnostic_response | tr A-Z a-z | awk '{print $1}'` # get first word from response (lowercase)
+        diagnostic_response_params=`echo $diagnostic_response | cut -d ' ' -f2-` # get rest of words from response
+
+        if [[ "$diagnostic_response_first_word" == "$diagnostic_response_params" ]]; then
+            diagnostic_response=""
+        elif [[ "$diagnostic_response_first_word" != "reset" ]]; then
+            diagnostic_response="$diagnostic_response_params"
+        fi
+
+        echo " "
+        case "$diagnostic_response_first_word" in
+            "" | "r" | "run")
+                in_diagnostic_loop=0
+                continue;;
+
+            reset)
+                reset $diagnostic_response_params # call function with supplied parameters
+                diagnostic_response="" # clear response for next command
+                continue;;
+
+            -*m)
+                echo "  Make flag: make clean -C $tirade_exec_dir; make tirade.x -C $tirade_exec_dir"
+                make clean -C "$tirade_exec_dir"; make tirade.x -C "$tirade_exec_dir"
+
+                echo "             make clean -C $citcom_exec_dir; make citcom.x -C $citcom_exec_dir"
+                make clean -C "$citcom_exec_dir"; make citcom.x -C "$citcom_exec_dir"
+
+                echo "  Re-made TiRADE & Citcom"
+                continue;;
+
+            -*verify | verify)
+                echo "  Verification flag: will check parameters"
+                verify_params_option=1
+                continue;;
+            
+            -*dimensionalize | dimensionalize)
+                echo "Dimensionalize flag: will dimensionalize output data"
+                perl -i -pe "s|dimensionalize=.*|dimensionalize=on|" "$citcom_input";;
+
+            -*c)
+                echo "  Make flag: make clean -C $citcom_exec_dir; make citcom.x -C $citcom_exec_dir"
+                make clean -C "$citcom_exec_dir"; make citcom.x -C "$citcom_exec_dir"
+                echo "  Re-made Citcom"
+                continue;;
+
+            -*t)
+                echo "  Make flag: make clean -C $tirade_exec_dir; make tirade.x -C $tirade_exec_dir"
+                make clean -C "$tirade_exec_dir"; make tirade.x -C "$tirade_exec_dir"
+                echo "  Re-made TiRADE"
+                continue;;
+
+            -*h | -*help | help)
+                ticom_help
+                echo "  Displayed help menu"
+                continue;;
+
+        esac
+        #TODO (BELOW)
+        #else if ($response_first == "--o") then
+        #    echo "  Result: Will organize output directory"
+        #    set organize_directory_flag_found="true" 
+        #    continue
+        #else if [[ $response_first == "--np" ]]; then
+        #   echo "  Result: Will not run postprocessing scripts"
+        #    set postproc_directory="false"
+        #    continue
+
+        flag=`echo ${diagnostic_response_first_word} | awk -F= '{print $1}'` # get potential flag from line
+        flag=`echo $flag | tr A-Z a-z` # convert to lowercase for better handling
+        variable=`echo ${diagnostic_response_first_word} | awk -F= '{print $2}'` # get the phrase on the right side of the potential flag
+
+        case "$flag" in
+            data)
+                mkdir -p "$variable"
+                disk="$variable"
+                echo "  New data output location -> $disk"
+                continue;;
+            citcom)
+                citcom_exec_dir="$variable"
+                check_citcom_src_code # will exit if invalid location
+                echo "  Citcom flag: New Citcom source code location -> $citcom_exec_dir"
+                continue;;
+            tirade)
+                tirade_exec_dir="$variable"
+                check_tirade_src_code # will exit if invalid location
+                echo "  Tirade flag: New TiRADE source code location -> $tirade_exec_dir"
+                continue;;
+            citcom_in)
+                if [[ -f "$variable" ]]; then
+                    citcom_input="$variable"
+                    check_citcom_input "$citcom_input"
+                    echo "  Citcom_in flag: New Citcom input file -> $citcom_input"
+                    #diagnostic_response="$diagnostic_response_params"
+                    if [[ "$diagnostic_response" == "$diagnostic_response_params" ]]; then
+                        diagnostic_response=""
+                    fi
+                else
+                    echo "  $variable cannot be found; no action taken"
+                fi
+                continue;;
+            settings)
+                if [[ -f "$variable" ]]; then
+                    settings_file="$variable"
+                    check_settings
+                    echo "  New settings file -> $variable"
+                else
+                    echo "  Could not find settings file at $variable"
+                fi
+                continue;;
+            postproc)
+                if [[ -d "$variable" && -f "$variable/post" && -f "$variable/plot_temp" ]]; then
+                    postproc_dir="$variable"
+                    echo "  New postprocessing scripts location -> $postproc_dir"
+                fi
+                continue;;
+            first)
+                first=$variable
+                check_first_last_inc
+                echo "  Citcom first step -> $first"
+                continue;;
+            last)
+                last=$variable
+                check_first_last_inc
+                echo "  Citcom last step -> $last"
+                continue;;
+            inc)
+                inc=$variable
+                check_first_last_inc
+                echo "  Citcom step increment -> $inc"
+                continue;;
+            *)
+                echo "  Ambiguous; no action taken"
+                diagnostic_response=""
+                continue;;
+        esac
+    done
+}
+
+reset () {
+    # A function that resets parameters given a settings file exists and is well-formed.
+    # If no parameters supplied, resets all listed parameters:
+    #   disk
+    #   citcom_exec_dir
+    #   tirade_exec_dir
+    #   citcom_input
+    #   case_dir
+    #   postproc
+    #   first
+    #   last
+    #   inc
+    # Users can supply the following parameters to *specifically* reset the following variables:
+    #   data -> disk
+    #   citcom -> citcom_exec_dir
+    #   tirade -> tirade_exec_dir
+    #   citcom_in -> citcom_input
+    #   case -> case_dir
+    #   postproc -> postproc
+    #   first -> first
+    #   last -> last
+    #   inc -> inc
+    # ... so an example usage to reset the output folder and the last step would be 'reset data last'
+    # Usage: reset [parameters]
+    # Return: None
+
+    if [[ $# -eq 0 && -f "$settings_file" ]]; then
+        check_settings
+        source "$settings_file"
+        echo "  Reset all parameters based on settings in $settings_file"
+    elif [[ ! $# -eq 0 && -f "$settings_file" ]]; then
+        check_settings
+        while [[ ! -z "$1" ]]; do
+            case "`echo $1 | tr A-Z a-z`" in
+                data)
+                    disk="$disk_d"
+                    mkdir -p "$disk"
+                    echo "  Reset output directory -> $disk";;
+                citcom)
+                    citcom_exec_dir="$citcom_exec_dir_d"
+                    check_citcom_src_code
+                    echo "  Reset Citcom source code directory -> $citcom_exec_dir";;
+                tirade)
+                    tirade_exec_dir="$tirade_exec_dir_d"
+                    check_tirade_src_code
+                    echo "  Reset TiRADE source code directory -> $tirade_exec_dir_d";;
+                citcom_in)
+                    citcom_input="$citcom_input_d"
+                    check_citcom_input "$citcom_input"
+                    echo "  Reset Citcom input file -> $citcom_input";;
+                case)
+                    case_dir="$case_dir_d"
+                    echo "  Reset CASE name -> $case_dir";;
+                postproc)
+                    postproc_dir="$postproc_dir_d"
+                    check_postproc
+                    echo "  Reset postprocessing script directory -> $postproc_dir";;
+                first)
+                    first=$first_d
+                    check_first_last_inc
+                    echo "  Reset first step -> $first";;
+                last)
+                    last=$last_d
+                    check_first_last_inc
+                    echo "  Reset last step -> $last";;
+                inc)
+                    inc=$inc_d
+                    check_first_last_inc
+                    echo "  Reset step increment -> $inc";;
+                *)
+                    echo "  $1 is ambiguous; no action taken";;
+            esac
+            shift # shift positional parameters, effectively cycling thru the list
+        done
+    else
+        echo "  Could not find settings at $settings_file; no action taken"
+    fi
+}
+
+read_arguments () {
+    # Reads TiCOM's initial arguments from the command-line, and acts accordingly.
+    # All the command-line arguments are copied into this function.
+    # We read flags case-insensitively and pathmames case-sensitively here.
+    # Usage: read_arguments $@
+    #   $@ -> Arguments from the command-line, relayed through the main TiCOM script
+    # Return: None
+
+    verify_params_option=0
+    while [[ ! -z "$1" ]]; do
+        # Check for specified flags/options (case-insensitively, that's what " | tr A-Z a-z " is for; but
+        # however, directories/paths are read case-sensitvely).
+        case "`echo $1 | tr A-Z a-z`" in
+            -*h | -*help | help) # Show help menu & exit
+                echo "Help flag: stopping execution"
+                ticom_help
+                exit;;
+
+            -*m | -*make | make) # Re-make TiRADE & Citcom
+                # Clean & Make TiRADE & Citcom
+                echo -n "Make flag: "
+                #make clean -C "$tirade_exec_dir"; make tirade.x -C "$tirade_exec_dir"
+                remake_tirade "$tirade_exec_dir" 1
+
+                echo -n "Make flag: "
+                #make clean -C "$citcom_exec_dir"; make citcom.x -C "$citcom_exec_dir"
+                remake_citcom "$citcom_exec_dir" 1;;
+
+            -*c) # Re-make Citcom
+                echo -n "Make flag: "
+                #make clean -C "$citcom_exec_dir"; make citcom.x -C "$citcom_exec_dir";;
+                remake_citcom "$citcom_exec_dir" 1;;
+
+            -*t) # Re-make TiRADE
+                echo -n "Make flag: "
+                #make clean -C "$tirade_exec_dir"; make tirade.x -C "$tirade_exec_dir";;
+                remake_tirade "$tirade_exec_dir" 1;;
+
+            -*d) # Diagnostic
+                echo "Diagnostic flag: pausing reading of command-line args"
+                diagnostic;;
+
+            -*v | -*verbose | verbose) # Verbose flag
+                echo "Verbose flag: will output additional messages"
+                redirect="";;
+
+            -*verify | verify)
+                echo "Verification flag: will check parameters"
+                verify_params_option=1;;
+
+            -*dimensionalize | dimensionalize)
+                echo "Dimensionalize flag: will dimensionalize output data"
+                perl -i -pe "s|dimensionalize=.*|dimensionalize=on|" "$citcom_input";;
+
+            data=*) # Set new data output location
+                disk=`echo $1 | awk -F "=" '{print $2}'` # parse & retrieve
+                mkdir -p "$disk"
+                echo "Data flag: New data output location -> $disk";;
+
+            citcom=*) # Set new Citcom source code location
+                citcom_exec_dir=`echo $1 | awk -F "=" '{print $2}'` # parse & retrieve
+                check_citcom_src_code # will exit if invalid location
+                echo "Citcom flag: New Citcom source code location -> $citcom_exec_dir";;
+
+            tirade=*) # Set new TiRADE source code location
+                tirade_exec_dir=`echo $1 | awk -F "=" '{print $2}'` # parse & retrieve
+                check_tirade_src_code # will exit if invalid location
+                echo "Tirade flag: New TiRADE source code location -> $tirade_exec_dir";;
+
+            citcom_in=*) # Set new Citcom input file location
+                citcom_input=`echo $1 | awk -F "=" '{print $2}'` # parse & retrieve
+                check_citcom_input "$citcom_input"
+                echo "Citcom_in flag: New Citcom input file -> $citcom_input";;
+
+            settings=*) # Give new settings file
+                settings_file=`echo $1 | awk -F "=" '{print $2}'` # parse & retrieve
+
+                if [[ -f $settings_file ]]; # Check if it exists
+                then
+                    check_settings
+                    source "$settings_file"
+                    echo "$settings_file -> settings loaded"
+                else
+                    echo "[ERROR] Could not find settings at $settings_file; exiting"
+                    exit
+                fi;;
+
+            case=*) # Set new Citcom CASE name
+                case_dir=`echo $1 | awk -F "=" '{print $2}'` # parse & retrieve
+                echo "CASE flag: New CASE name -> $case_dir";;
+
+            postproc=*) # Set new postprocessing scripts directory
+                postproc_dir=`echo $1 | awk -F "=" '{print $2}'` # parse & retrieve
+                check_postproc
+                echo "Postproc flag: New postprocessing scripts location -> $postproc_dir";;
+
+            first=*)
+                first=`echo $1 | awk -F "=" '{print $2}'` # parse & retrieve
+                check_first_last_inc
+                echo "First flag: Citcom first step -> $first";;
+
+            last=*)
+                last=`echo $1 | awk -F "=" '{print $2}'` # parse & retrieve
+                check_first_last_inc
+                echo "Last flag: Citcom last step -> $last";;
+
+            inc=*)
+                inc=`echo $1 | awk -F "=" '{print $2}'` # parse & retrieve
+                check_first_last_inc
+                echo "Inc flag: Citcom inc step -> $inc";;
+
+            *) # Unrecognized parameter
+                echo "$1 flag: Ambiguous; no action taken";;
+            
+        esac
+        shift # shift positional parameters; eg. make the old $2 into the new $1
+    done
+
+    if [[ $verify_params_option -eq 1 ]]; then
+        validate_params
+    fi
+}
+
+# MAKE INPUT FILE ---------------------------------------------------------------------------
+
+make_tirade_input () {
+    # This function makes an input file for TiRADE. Viscosity for each layer is taken
+    # from the output of a related Citcom run.
+    # Usage: make_tirade_input tirade_dir citcom_dir case_dir step tirade_input tirade_step_dir R0
+    # Return: None
+
+    tirade_dir="$1"
+    citcom_dir="$2"
+    case_dir="$3"
+    step=$4
+    tirade_input="$5"
+    tirade_step_dir="$6"
+    R0=$7
+    #echo $TiRADE_step_dir
+    #rb=0.8175     # base of ice shell 
+    #rcmb=0.6825
+    #rcmb=0.8413
+
+    rcmb=0.7262   # top of core
+    #rcmb=$8   # top of core; flag
+
+    ric=0.2     # fluid core size
+
+    postdir="$citcom_dir"/"$case_dir"/post
+
+    input="$citcom_dir"/"$case_dir"/ave.$step
+    inputa="$postdir"/ave1.$step
+    inputb="$postdir"/viscr.$step
+    inputc="$postdir"/viscrdim.$step
+    inputd="$postdir"/viscline
+    output="$tirade_input"
+
+    # Header information
+    #gridpoints
+    ntheta=91      
+    nphi=181        
+    nr=52           
+
+    # global material properties
+    refvisc=1.0e14
+    #refvisc=1.0e13
+    Ea=6.0e4
+    kcond=4.0
+
+    # orbital 
+    freq=5.31e-5
+    ecc=0.0047
+    #ecc=0.02
+    obl=0.043
+
+    # thermal bcs
+    Tbot=273.0
+    Tsurf=75.0
+    Fbot=0.0
+
+    # output directory
+    #TiRADE_step_dir=$TiRADE_dir/step$step
+    echo -e "\n***" "$tirade_step_dir" "***\n"
+    mkdir -p "$tirade_step_dir"
+    echo -e "\n***" "$output" "***\n"
+
+    # output flags
+    h3Dflag=0
+    surfaceflag=1
+    axiflag=1
+    h1Dflag=1
+    potflag=0
+    radfuncflag=0
+    stressflag=0
+    condflag=0
+
+    # print header info
+    #echo $ntheta '\t' $nphi '\t' $nr '\t # Number of points in theta phi r' > $output
+    #echo $refvisc '\t' $Ea '\t' $kcond '\t # ref_visc (Pa s)  Ea (kj/mol)  k (W m-1 K-1)' >> $output
+    #echo $freq '\t' $ecc '\t' $obl '\t # freq (s-1)  ecc  ob' >> $output
+    #echo $Tbot '\t' $Tsurf '\t' $Fbot '\t # Tbot (K)  Tsurf (K)  Fbot (W m-2)' >> $output
+
+    echo $ntheta $nphi $nr '\t # Number of points in theta phi r' > "$output"
+    echo $refvisc $Ea $kcond '\t # ref_visc (Pa s)  Ea (kj/mol)  k (W m-1 K-1)' >> "$output"
+    echo $freq $ecc $obl '\t # freq (s-1)  ecc  ob' >> "$output"
+    echo $Tbot $Tsurf $Fbot '\t # Tbot (K)  Tsurf (K)  Fbot (W m-2)' >> "$output"
+
+    # print output info
+    echo -e "$tirade_step_dir"  '\t # output_directory' 
+    echo \""$tirade_step_dir"\"  '\t # output_directory' >> "$output"
+    echo $h3Dflag '\t # Output flag for 3D heating, to 1 to output, 0 otherwise' >> "$output"
+    echo $surfaceflag '\t # Surface heating'  >> "$output"
+    echo $axiflag '\t # 2D axisymmetric heating'  >> "$output"
+    echo $h1Dflag '\t # 1D radial heating' >> "$output"
+    echo $potflag '\t # Potential' >> "$output"
+    echo $radfuncflag '\t # Radial Functions' >> "$output"
+    echo $stressflag '\t # Stress and Strain' >> "$output"
+    echo $condflag '\t # Flag for whether or not to run conductive iteration' >> "$output"
+
+
+    # layers
+    numlayers=$nr
+    corelayers=2
+    oceanlayers=3
+    dens_core=2170
+    dens_ice=925
+    dens_ocean=1000
+    rig_core=7.0e10
+    #rig_core=4.0e9
+    rig_ice=4.0e9
+    rig_ocean=4.0e4
+    bulk_mod=1.0e19
+    visc_core=1.0e21
+    visc_ocean=1.0e5
+
+    echo $numlayers '\t # Number of layers must match num_r for now' >> "$output"
+    sed 1d "$input" > "$inputa"
+    awk '{print $7, $1}' "$inputa" > "$inputb"
+    awk '{printf "%g %g\n", $1*'$refvisc', $2*'$R0'}' "$inputb" > "$inputc"
+    rb=`sed 1q "$inputb" | awk '{print $2}'`
+    echo -e "\n\n*** mTi rb=" $rb "***\n\n"
+
+    # Fluid inner core
+    k=1
+    echo $k
+    density=$dens_core
+    rigidity=0
+
+    #sed -n $k'p' $inputc > $inputd
+    echo 0.0e+0 $ric > "$inputd"
+    #awk '{printf "%4.3e \t %d \t %2.1e \t %4.3e \t %2.1e\n", $2, '$density', '$rigidity', '$bulk_mod', 0.0}' $inputd >> $output
+    awk '{printf "%4.3e \t %d \t %2.1e \t %4.3e \t %2.1e\n", $2*'$R0', '$density', '$rigidity', '$bulk_mod', $1}' "$inputd" >> "$output"
+    k=$(($k + 1))
+
+    # Solid core
+    echo core
+    density=$dens_core
+    rigidity=$rig_core
+    while [[ $(($k <= $corelayers)) -eq 1 ]]; do
+        echo $k
+        # sed -n $k'p' $inputc > $inputd
+        echo $visc_core $rcmb > "$inputd"
+        # awk '{printf "%4.3e \t %d \t %2.1e \t %4.3e \t %2.1e\n", $2, '$density', '$rigidity', '$bulk_mod', $1}' $inputd >> $output
+        awk '{printf "%4.3e \t %d \t %2.1e \t %4.3e \t %2.1e\n", $2*'$R0', '$density', '$rigidity', '$bulk_mod', $1}' "$inputd" >> "$output"
+        k=$(($k + 1))
+    done
+
+    # Ocean
+    echo ocean
+    density=$dens_ocean
+    rigidity=$rig_ocean
+    while [[ $(($k <= $oceanlayers)) -eq 1 ]]; do
+        echo $k
+        
+        # sed -n $k'p' $inputc > $inputd
+        echo $visc_ocean $rb > "$inputd"
+        awk '{printf "%4.3e \t %d \t %2.1e \t %4.3e \t %2.1e\n", $2*'$R0', '$density', '$rigidity', '$bulk_mod', $1}' "$inputd" 
+        awk '{printf "%4.3e \t %d \t %2.1e \t %4.3e \t %2.1e\n", $2*'$R0', '$density', '$rigidity', '$bulk_mod', $1}' "$inputd" >> "$output"
+        k=$(($k + 1))
+    done
+
+
+    # Back up k so we get interface layer at same depth with ice properties
+    k=$(($k - 1))
+
+    # Ice shell
+    echo ice
+    density=$dens_ice
+    rigidity=$rig_ice
+    while [[ $(($k < $numlayers)) -eq 1 ]]; do
+        kice=$((1 + $k - $oceanlayers))
+        echo $k $kice
+        sed -n $kice'p' "$inputc" > "$inputd"
+        awk '{printf "%4.3e \t %d \t %2.1e \t %4.3e \t %2.1e\n", $2, '$density', '$rigidity', '$bulk_mod', $1}' "$inputd" >> "$output"
+        k=$(($k + 1))
+    done
+}
+
+make_citcom_input () {
+    # Creates a Citcom input file.
+    # Usage: make_citcom_input citcom_dir case_dir citcom_template citcom_input step inc
+    #   citcom_dir -> Citcom data subdirectory in output directory (eg. data/Citcom_data)
+    #   case_dir -> Citcom CASE name
+    #   citcom_template -> Original Citcom input file (will be copied)
+    #   citcom_input -> Will be used to run Citcom
+    #   step -> The current step number (where Citcom will resume)
+    #   inc -> The step increment
+    # Return: None
+    
+    citcom_dir="$1"
+    case_dir="$2"
+    citcom_template="$3"
+    citcom_input="$4"
+    step=$5
+    inc=$6
+
+    heatingfile="$citcom_dir"/"$case_dir"/h2D.dat.$step
+    tempfile1="$citcom_dir"/temp1
+    tempfile2="$citcom_dir"/temp2
+
+    R0=$7   # Radius of body
+    bbl=2000    # thickness of bottom boundary layer
+    # Copy template file to file we want to make
+
+    # If the template and the input are not the same file then copy the file over
+    if [[ "$citcom_input" != "$citcom_template" ]]; then
+        cp "$citcom_template" "$citcom_input"
+    fi
+    # Turn on tidal heating
+    #perl -i -pe "/tidal_heating/s/0/1/" "$citcom_input"
+    perl -i -pe "s|tidal_heating=.|tidal_heating=1|" "$citcom_input"
+    # Turn on restart option
+    perl -i -pe 's|restart=0|restart=1|' "$citcom_input"
+    perl -i -pe 's|restart_timesteps=0|restart_timesteps='$step'|' "$citcom_input"
+
+    perl -i -pe 's|maxstep=.*|maxstep='$inc'|' "$citcom_input"
+
+    # Update inner_radius
+    
+    echo -e "\n\n*** heating=" "$heatingfile" "***\n\n"
+    rb=`sed 1q "$heatingfile" | awk '{print $2*'$R0'}'`
+    echo -e "\n\n*** rb=" $rb "***\n\n"
+    perl -i -pe "s|inner_radius=.*|inner_radius='$rb'|" "$citcom_input"
+
+    # Update z_lmantle and layerd
+    zlm=`awk 'BEGIN {print ('$R0'-'$rb'-'$bbl')}'`
+    echo -e "\n\n*** zlm=" $zlm "***\n\n"
+    perl -i -pe 's|z_lmantle=.*|z_lmantle='$zlm'|' "$citcom_input"
+
+    layerd=`awk 'BEGIN {print ('$R0'-'$rb')/1000}'`
+    echo -e "\n\n*** layerd=" $layerd "***\n\n"
+    perl -i -pe 's|layerd=.*|layerd='$layerd'|' "$citcom_input"
+
+    # Update rr
+    rr1=`awk 'BEGIN {print ('$rb'/'$R0')}'`
+    echo -e "\n\n*** rr1=" $rr1 "***\n\n"
+    perl -i -pe 's|rr=[0-9\.]*|rr='$rr1'|' "$citcom_input"
+}
+
+# OTHER -------------------------------------------------------------------------------------
+
+print_variables () {
+    # Prints TiCOM's working parameters to the screen.
+    # Usage: print_variables
+    # Return: None
+
+    vars=("$disk" "$citcom_exec_dir" "$citcom_input" "$tirade_exec_dir" "$case_dir" "$postproc_dir" $first $last $inc "$settings_file")
+
+    # Display variables stored as "false" as "NO ASSIGNMENT" instead
+    i=0
+    while [[ $(($i < ${#vars[@]})) -eq 1 ]]; do
+        if [[ "${vars[i]}" == "false" ]]; then
+            vars[i]="NO ASSIGNMENT"
+        fi
+        i=$(($i + 1))
+    done
+
+    # Print everything to screen
+    echo -e "\n  Loaded Settings:"
+    echo -e "\n\t  Current working directory: ${PWD}"
+    echo -e "\t  Settings file ('settings' flag): ${vars[9]}"
+    echo -e "\t  Data directory ('data' flag): ${vars[0]}"
+    echo -e "\t  Citcom source code directory ('citcom' flag): ${vars[1]}"
+    echo -e "\t  Citcom input file path ('citcom_in' flag): ${vars[2]}"
+    echo -e "\t  TiRADE source code directory ('tirade' flag): ${vars[3]}"
+    echo -e "\t  Citcom CASE output directory ('case' flag): ${vars[4]}"
+
+    echo -e "\t  Postprocessing script directory ('postproc' flag): ${vars[5]}"
+
+    echo -e "\t  First step ('first' flag): ${vars[6]}"
+    echo -e "\t  Last step ('last' flag): ${vars[7]}"
+    echo -e "\t  Step increment ('inc' flag): ${vars[8]}"
+
+    echo # newline
+}
+
+get_R0_from_citcom_input () {
+    # Reads the outer radius from the Citcom input file.
+    # This way the user only inputs the radius once in the Citcom input file.
+    # Searches for the phrase "outer_radius=num", trims away everything but the number itself,
+    # converts scientific notation to float, and then truncates the decimal to get an integer.
+    # Usage: get_R0_from_citcom_input citcom_input
+    #   citcom_input -> Citcom input file from which you want to find & return R0
+    # Return: R0 (integer)
+
+    # How this works:
+    # a) find line in citcom input file w/ "outer_radius=*radius* ..."
+    # b) tokenize line using "=" delimiter (to get rid of "outer_radius="),
+    # c) tokenize line using " " delimiter (to get rid of everything after the radius)
+    # d) convert to float (if in scientific notation)
+    # e) truncate decimal to convert R0 from float to integer
+    # f) assign global R0 in main script to return value of this function (the below line)
+    echo $(grep 'outer_radius=.*' "$1" | awk -F "=" '{print $2}' | awk -F " " '{printf "%f", $1}' | awk -F "." '{print $1}') # read from citcom input, process & return according to above comments
+}
+
+copy_citcom_in () {
+    # Copies the Citcom input file to the Citcom CASE output directory, specifically
+    # within the input_files/ directory so the users can see the input files that generated
+    # a given run's data.
+    # Usage: copy_citcom_in
+    # Return: None
+
+    cp "$citcom_input" "$citcom_dir"/"$case_dir"/input_files/Citcom_input_"$case_dir"\_step$first
+    citcom_input="$citcom_dir"/"$case_dir"/input_files/Citcom_input_"$case_dir"\_step$first
+    echo "Citcom input file copied -> $citcom_input"
+    # Go into recently created citcom input file (for step=first) and change output directory to conform w/ other output
+    replace_text_perl=\""$citcom_dir"/"$case_dir"\"
+    perl -i -pe "s|datafile=.*|datafile=$replace_text_perl|" "$citcom_input"
+    perl -i -pe "s|oldfile=.*|oldfile=$replace_text_perl|" "$citcom_input"
+}

@@ -1,0 +1,3 @@
+#!/bin/csh
+set step=$1
+xmgrace post/Trdim.$step -batch ../../../../../postproc/bfile -nosafe -hardcopy -printfile post/Trdim$step.png

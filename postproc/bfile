@@ -1,0 +1,16 @@
+#
+xaxis label "Temperature (K)"
+yaxis label "Radial Position (km)"
+view xmin 0.15
+view xmax 0.85
+view ymin 0.15
+view ymax 0.85
+world xmin 75
+world xmax 300
+world ymin 25
+world ymax 252
+xaxis tick major 50
+xaxis tick minor 25
+
+HARDCOPY DEVICE "PNG"
+PRINT

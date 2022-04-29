@@ -1,0 +1,213 @@
+# CONVECTION SPECIFIC PARAMETERS
+
+	rayleigh=3.34e9 	#   thermal Ra
+	rayleigh_comp=0.0e9	  # chemical Ra (negative buoyancy)
+	datafile="output"
+	visc_smooth_cycles=2
+
+	stokes_flow_only=0 	 # 1: for instantaneous flow; 0: time-dep
+	maxstep=1000 					# max velocity iterations
+	storage_spacing=100 		# write data every ...
+
+  restart=0
+  restart_timesteps=0
+  oldfile="test1"
+	restart_age=0
+	
+	composition=1	#0: thermal convection 1: thermochemical
+#	comp_adv_method=particle	#	using particle
+#	markers_per_ele=100	
+	melting=0
+
+	comp_adv_method=field
+	comp_diffusivity=0e-3
+
+	outer_radius=252.0e3	inner_radius=200.0e3	
+
+	z_lmantle=69.0e3
+	z_410=40.0e3		# not used for this case
+	z_lith=2.0e3		# lithosphere thickness
+
+  comp_radius=206.0e3   # radial position of initial compositional boundary
+												 # grid
+
+  r_grid_layers=3        # r_grid_layers-1 layers of diff. res. in r
+  rr=0.7937,0.8969,1.0   # 0.5=inner_radius/outer_radius
+  nr=1,53,65
+
+	dimenx=1.0		#   in PI
+  theta_grid_layers=2     # for grid refinement in theta
+  theta=0,1.0		# in PI
+  ntheta=1,193
+
+
+#	nodex=193 nodez=65 nodey=1 	#
+	mgunitx=12			# multigrid unit cell
+	mgunitz=4			#
+	levels=5			# and how many times it gets doubled
+
+
+	int_heating_control=0   # 0: non-dimensional; 1: dimensional W/m^3
+	Q0=0.94	#
+	Q0_enriched=0.0
+
+	impacts=0
+	impact_velocity=0.0e3
+	
+
+# Rheology
+	
+	Viscosity=system
+	rheol=3 TDEPV=on		#
+
+	CHEMDEPV=off
+
+	num_mat=3
+	viscE=36.45,36.45,36.45
+	viscZ=0.0,0.0,0.0
+	viscT=0.0,0.0,0.0
+ 	visc0=1.0e0,1.0e0,1.0e0
+	VMIN=on visc_min=1.0e0
+	VMAX=on visc_max=1.0e07
+
+	SDEPV=off
+	sdepv_misfit=0.010
+	sdepv_expt=1,1
+	sdepv_trns=1.e0,1e0
+
+	visc_factor=1
+  thermexp_factor=1
+  thermdiff_factor=1
+  dispation_number=6.643e-4       #alpha*g*R0/Cp
+  surftemp=0.3788   #Ts/(Tcmb-Ts)
+	Tsmax=0.3788	  #(T0max) / (Tcmb - T0max)
+
+
+# phase changes
+
+	Ra_410=0.0        #kg/m^3
+	Ra_670=0.0
+	clapeyron410=3.0e6    #Pa K-1
+	clapeyron670=-3.0e6
+
+	transT410=1000.0		#  K
+	transT670=1550.0		
+
+	width410=3.5e4		# m
+	width670=3.5e4		
+	
+	visc_heating=0
+	adi_heating=0
+	latent_heating=1
+	tidal_heating=0
+	shear_heating=0
+	despin=0
+	track_melt=0
+  numtheta=92 # gridpoints for tidal heating input
+  numr=67
+
+# perturbations
+
+  num_perturbations=1             #  N, Number of perturbations
+  perturbmag=0.01	 	        #  A list of N magnitudes
+  ll=20.0	                #  A list of N wavenumbers (/PI)
+	mm=0.0
+
+# DIMENSIONAL INFORMATION (BENCHMARK)
+
+	ReferenceT=273.0     # CMB temperature in K 
+	refvisc=1.0e14
+	density=925.0
+	lmdensity=2170.0
+	thermdiff=1e-6
+	gravacc=0.114
+	thermexp=1.e-4   # at the CMB
+	cp=4324.0
+	latent=3.34e5
+	wdensity=0.0
+	coredensity=2170.0
+  rigidity=4.0e9
+  frequency=5.31e-5
+
+	layerd=46.0 # km
+
+#
+	aug_lagr=on
+	aug_number=5.0e3
+
+#	precond=off
+	precond=on
+
+	Problem=convection 		# which built in problem
+	Geometry=saxi 		# axi, at the moment 
+#	Solver=cgrad 		# conjugate gradient
+	Solver=multigrid 	# multigrid iterative method, store coefficients
+	node_assemble=1
+
+
+# GRID POINTS:
+
+	Spacing=regular			# regular grid
+	orthogonal=off
+
+
+# BOUNDARY CONDITIONS
+	
+	topvbc=0			# velocity boundary conditions top and bottom
+		topvbxval=0.0			
+		topvbyval=0.0		
+	botvbc=0 	
+		botvbxval=0.0
+		botvbyval=0.0	
+
+					#
+	toptbc=1 bottbc=0		# temperature bc's top and bottom
+	toptbcval=0.0 bottbcval=0.0	#
+
+	topcbc=0 botcbc=0		# temperature bc's top and bottom
+	topcbcval=0.0 botcbcval=0.0	#
+
+	periodicx=off 			#
+	periodicy=off			#
+	flowthroughx=off		#
+	flowthroughy=off		#
+
+	surf_temp_var=0			# variable surface temperature
+
+# Data input and program debugging
+
+	DESCRIBE=off			# 
+	BEGINNER=off			#
+	VERBOSE=off			#
+	verbose=off		#	
+	COMPRESS=off			#
+	see_convergence=1
+
+
+# SOLVER RELATED MATTERS  (HAVE SENSIBLE DEFAULTS & YOU SHOULD BE CAREFUL CHANGING THESE)
+
+	maxsub=1
+	maxsamevisc=0
+
+# Very new version of parameters ....	
+
+	viterations=2
+	mg_cycle=1		# 1 = V cycle, 2 = W cycle, and so on.
+	down_heavy=4		# Increase downward smoothing by this factor.
+	up_heavy=4		# Increase upward smoothing by this factor.
+	vlowstep=400		# Enough to get very  accurate soln at low level.
+	vhighstep=4		# Smoothing passes at highest level (finest grid).
+
+	piterations=375		# Uzawa iteration loops.
+	accuracy=1.0e-2		# Desired accuracy of Uzawa algorithm. 
+	tole_compressibility=5e-8
+
+	depthdominated=off	# sort equations horizontally.
+	eqnzigzag=off		# sort back and forth in direction chosen.
+	eqnviscosity=off
+
+
+# Tuning of energy equation
+
+	adv_sub_iterations=2
+	finetunedt=0.7
