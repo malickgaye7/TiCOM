@@ -367,7 +367,7 @@ ticom_help () {
 
     # Options
     echo -e "  Options:"
-    echo -e "\n\tFormat*: TiCOM_example option1 option2 ...\n"
+    echo -e "\n\tFormat*: TiCOM option1 option2 ...\n"
     echo -e "\tOption\t\t              Description of Option"
     echo -e "\t  --m ......................... Clean & re-make Citcom & TiRADE"
     echo -e "\t  --c ......................... Clean & re-make Citcom"
@@ -385,7 +385,7 @@ ticom_help () {
 
     # Print overload flags and formats
     echo -e "  Overloading:"
-    echo -e "\n\tFormat*: TiCOM_example flag1=overloaded_variable1 flag2=overloaded_variable2 ...\n"
+    echo -e "\n\tFormat*: TiCOM flag1=overloaded_variable1 flag2=overloaded_variable2 ...\n"
     echo -e "\tFlag\t\t      Description of 'overloaded_variable'\t\tVariable Type"
 
     # Directories/paths
