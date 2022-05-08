@@ -37,7 +37,7 @@
 
 # TiRADE SETTINGS ------------------------------------------------------------
 
-    true_fluid=1 # Set to 1 if user wants to use a true fluid prop. matrix on layers for which the rigidity & viscosity is below the cutoff
+    true_fluid_flag=1 # Set to 1 if user wants to use a true fluid prop. matrix on layers for which the rigidity & viscosity is below the cutoff
     rigidity_cutoff=0.1 # must be set if true_fluid = 1
     viscosity_cutoff=0.1 # must be set if true_fluid = 1
 

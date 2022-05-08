@@ -860,7 +860,7 @@ make_tirade_input () {
     echo $radfuncflag '\t # Radial Functions' >> "$output"
     echo $stressflag '\t # Stress and Strain' >> "$output"
     echo $condflag '\t # Flag for whether or not to run conductive iteration' >> "$output"
-    echo $true_fluid $rigidity_cutoff $viscosity_cutoff '\t#Flag for whether to use a true fluid layer; rigidity cutoff; viscosity cutoff' >> "$output"
+    echo $true_fluid_flag $rigidity_cutoff $viscosity_cutoff '\t#Flag for whether to use a true fluid layer; rigidity cutoff; viscosity cutoff' >> "$output"
     echo $andrade_flag $andrade_alpha $andrade_beta '\t#0 = Maxwhell rheology, 1 = Andrade rheology (param. 2 = alpha [float], param. 3 = beta [exp.])' >> "$output"
 
 
