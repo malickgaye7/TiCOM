@@ -304,7 +304,9 @@ void radial_functions(int max_layers, complex long double *y_i[], char* true_flu
      */
     for (layer=1; layer<max_layers; layer++) {
 		r = layers[layer].rad;
-		if (*true_fluid_flag && creall(layers[layer].visc) < planet.true_fluid_cutoff_visc && creall(layers[layer].shear) < planet.true_fluid_cutoff_rigidity && layer > 1) { get_true_fluid_propmat(layer, r, Ylayer, Yinvlayer); }
+		if (*true_fluid_flag && creall(layers[layer].visc) < planet.true_fluid_cutoff_visc && creall(layers[layer].shear) < planet.true_fluid_cutoff_rigidity && layer > 1) { 
+			get_true_fluid_propmat(layer, r, Ylayer, Yinvlayer);
+		}
 		else { get_layer_propmat(layer,r,Ylayer,Yinvlayer); }
 		for (i = 1; i <= 6; i++) {
 			for (j = 1; j <= 6; j++) {
@@ -439,7 +441,8 @@ void get_true_fluid_propmat(int layer, long double r, complex long double *Ylaye
 	// mu = 0
 	// propagation of mechanical properties, y1, y3, y4 and potential stress y6 basically go away
 	// only left w/ y5, y7
-	printf("Layer %d (zero-based) type: true fluid\n", layer); // TODO delete
+	void diag_multi_mat(complex long double *Yinvlayer[], long double D[], complex long double *Ybar[], int);
+
 	// note to self SEE PAGE 61 (Sabadini)
 	int i, j;
 	/*for (i = 1; i < 7; i++) {
@@ -461,7 +464,7 @@ void get_true_fluid_propmat(int layer, long double r, complex long double *Ylaye
 	// y1
 	Ylayer[1][1] = L * pow(r, L + 1) / (long double) (4 * L + 6);
 	Ylayer[1][2] = pow(r, L - 1);
-	Ylayer[1][3] = Ylayer[1][6] = 0;
+	Ylayer[1][3] = Ylayer[1][6] = 0.0;
 	Ylayer[1][4] = (L + 1) * pow(r, -L) / (long double) (4 * L - 2);
 	Ylayer[1][5] = pow(r, -L - 2);
 
@@ -556,7 +559,6 @@ void get_true_fluid_propmat(int layer, long double r, complex long double *Ylaye
     Ybar[6][6] = -r;
 
 	// Define Yinvlayer
-	void diag_multi_mat(complex long double *Yinvlayer[], long double D[], complex long double *Ybar[], int);
 	diag_multi_mat(Yinvlayer,D,Ybar,6);
 
 	// Deallocate heap memory
@@ -586,8 +588,6 @@ void get_layer_propmat(int layer, long double r, complex long double *Ylayer[],
 
     void diag_multi_mat(complex long double *Yinvlayer[], long double D[], 
 	    complex long double *Ybar[], int);
-
-	printf("Layer %d (zero-based) type: non-fluid\n", layer); // TODO delete
 
     for(i=1;i<=6;i++)
     	Ybar[i] = (complex long double *)malloc(7*sizeof(complex long double));

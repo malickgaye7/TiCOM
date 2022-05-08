@@ -11,10 +11,10 @@
 0	# Radial Functions
 0	# Stress and Strain
 0	# Flag for whether or not to run conductive iteration
-0 0.1 0.1 # Flag for whether or not to use a true fluid layer, rigidity cutoff, viscosity cutoff
+1 0.2 0.2 # Flag for whether or not to use a true fluid layer, rigidity cutoff, viscosity cutoff
 1 3.0 5e10 # 0 -> Maxwhell rheology, 1 -> Andrade rheology (param. 2 = alpha [float], param. 3 = beta [exp.])
 5	# Number of layers (must match num_r for now)
-7.04e5	5150	0.0	1.444e19 0.0
+7.04e5	5150	0.1	1.444e19 0.1
 1.446e6	3300	1.0e11	1.444e19 1.0e20
 1.465e6	1000	4.0e4	2.25e9	 1.0e5
 1.56e6	1000	1.0e9	1.067e19 3.0e14

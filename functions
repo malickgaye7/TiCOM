@@ -836,15 +836,7 @@ make_tirade_input () {
     mkdir -p "$tirade_step_dir"
     echo -e "\n***" "$output" "***\n"
 
-    # output flags
-    h3Dflag=0
-    surfaceflag=1
-    axiflag=1
-    h1Dflag=1
-    potflag=0
-    radfuncflag=0
-    stressflag=0
-    condflag=0
+    # output flags found in 'settings' file
 
     # print header info
     #echo $ntheta '\t' $nphi '\t' $nr '\t # Number of points in theta phi r' > $output
@@ -868,6 +860,8 @@ make_tirade_input () {
     echo $radfuncflag '\t # Radial Functions' >> "$output"
     echo $stressflag '\t # Stress and Strain' >> "$output"
     echo $condflag '\t # Flag for whether or not to run conductive iteration' >> "$output"
+    echo $true_fluid $rigidity_cutoff $viscosity_cutoff '\t#Flag for whether to use a true fluid layer; rigidity cutoff; viscosity cutoff' >> "$output"
+    echo $andrade_flag $andrade_alpha $andrade_beta '\t#0 = Maxwhell rheology, 1 = Andrade rheology (param. 2 = alpha [float], param. 3 = beta [exp.])' >> "$output"
 
 
     # layers

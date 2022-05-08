@@ -35,6 +35,26 @@
   # Postprocessing scripts location (directory path or "false" if disabled)
     postproc_dir_d="false"
 
+# TiRADE SETTINGS ------------------------------------------------------------
+
+    true_fluid=1 # Set to 1 if user wants to use a true fluid prop. matrix on layers for which the rigidity & viscosity is below the cutoff
+    rigidity_cutoff=0.1 # must be set if true_fluid = 1
+    viscosity_cutoff=0.1 # must be set if true_fluid = 1
+
+    andrade_flag=1 # 0 = Maxwell rheology, 1 = Andrade rheology
+    andrade_alpha=3.0 # must be set if andrade_flag = 1
+    andrade_beta='5e10' # must be set if andrade_flag = 1
+
+    # Please refer to the TiRADE documentation for information on these parameters
+    h3Dflag=0
+    surfaceflag=1
+    axiflag=1
+    h1Dflag=1
+    potflag=0
+    radfuncflag=0
+    stressflag=0
+    condflag=0
+
 ################################# End user input #################################
 # Copy assignments; allows "resetting"; this should not be edited.
 citcom_input="$citcom_input_d"
