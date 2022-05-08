@@ -16,6 +16,9 @@ Once installed, TiCOM can be called using the ```./TiCOM``` command, assuming th
     
 ... otherwise, if the TiCOM directory is in ```PATH``` then a user can call TiCOM by simply using the ```TiCOM``` command.
 
+<p align="center">
+    <img src="https://i.imgur.com/BEFcWm8.png" />
+</p>
 
 \
 TiCOM comes with two modules: Citcom & TiRADE. TiCOM starts by using a specified initial Citcom input file; an example is provided in the Citcom directory, ```./Citcom_axi_for_TiCOM/input-example-Citcom-JKedit2```. This file contains information about the body being simulated.
